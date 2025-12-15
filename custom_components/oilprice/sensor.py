@@ -16,7 +16,7 @@ from homeassistant.const import (CONF_NAME, CONF_REGION)
 from requests import request, exceptions
 from bs4 import BeautifulSoup
 
-__version__ = '0.1.0'
+__version__ = '0.1'
 _LOGGER = logging.getLogger(__name__)
 
 REQUIREMENTS = ['requests', 'beautifulsoup4']
