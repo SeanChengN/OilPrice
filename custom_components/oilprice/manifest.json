@@ -1,8 +1,8 @@
 {
   "domain": "oilprice",
   "name": "Oil Price",
-  "version": "0.1",
-  "documentation": "https://github.com/SeanChengN/OilPrice/blob/master/readme.md",
+  "version": "1.0.0",
+  "documentation": "https://github.com/SeanChengN/OilPrice",
   "codeowners": ["@SeanChengN"],
   "requirements": ["requests", "beautifulsoup4"],
   "config_flow": true,
