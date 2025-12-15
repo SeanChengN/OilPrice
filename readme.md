@@ -6,27 +6,20 @@
 # 安装
 1 手动安装，放入 <config directory>/custom_components/ 目录
   
-2 hacs安装 CUSTOM REPOSITORIES中填入：https://github.com/aalavender/OilPrice
+2 hacs安装 CUSTOM REPOSITORIES中填入：https://github.com/SeanChengN/OilPrice
 
 # 配置
-**Example configuration.yaml:**
-```yaml
-sensor:
-  - platform: oilprice
-    name: 最新油价
-    region: zhejiang
-```
-
+在“设置” --> “集成”界面中，搜索“Oil Price”添加
 
 # 前台界面
 原始的界面是这样的
 
-![avatar](https://github.com/aalavender/OilPrice/blob/master/2.PNG)
+![avatar](https://github.com/SeanChengN/OilPrice/blob/master/2.PNG)
 
 ~~建议采用[markdown-mod](https://github.com/thomasloven/lovelace-markdown-mod )进行展示，效果是这样的~~
 最新的Lovelace-ui已经集成了markdown控件，格式所有区别
 
-![avatar](https://github.com/aalavender/OilPrice/blob/master/1.PNG)
+![avatar](https://github.com/SeanChengN/OilPrice/blob/master/1.PNG)
 
 list-card 的lovelace-ui配置：
 ```
