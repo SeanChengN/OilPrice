@@ -2,7 +2,7 @@
 A component which allows you to parse http://www.qiyoujiage.com/zhejiang.shtml get oil price
 
 For more details about this component, please refer to the documentation at
-https://github.com/aalavender/OilPrice/
+https://github.com/SeanChengN/OilPrice/
 
 """
 import re
@@ -13,7 +13,7 @@ from homeassistant.helpers.entity import Entity
 import homeassistant.helpers.config_validation as cv
 from homeassistant.components.sensor import (PLATFORM_SCHEMA)
 from homeassistant.const import (CONF_NAME, CONF_REGION)
-from requests import request
+from requests import request, exceptions
 from bs4 import BeautifulSoup
 
 __version__ = '0.1.0'
@@ -21,7 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 
 REQUIREMENTS = ['requests', 'beautifulsoup4']
 
-COMPONENT_REPO = 'https://github.com/aalavender/OilPrice/'
+COMPONENT_REPO = 'https://github.com/SeanChengN/OilPrice/'
 SCAN_INTERVAL = datetime.timedelta(hours=8)
 ICON = 'mdi:gas-station'
 
@@ -30,11 +30,27 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_REGION): cv.string,
 })
 
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Set up oil price sensor from a config entry."""
+    _LOGGER.info("Setting up oil price sensor from config entry")
+    
+    # 从配置条目获取配置
+    config = config_entry.data
+    name = config.get(CONF_NAME)
+    region = config.get(CONF_REGION)
+    
+    # 创建传感器
+    sensor = OilPriceSensor(name=name, region=region)
+    
+    # 添加到HA
+    async_add_entities([sensor], True)
+    
+    return True
 
-async def async_setup_platform(hass, config, async_add_devices, discovery_info=None):
-    _LOGGER.info("async_setup_platform sensor oilprice")
-    async_add_devices([OilPriceSensor(name=config[CONF_NAME], region=config[CONF_REGION])],True)
-
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+    """Set up oil price sensor from YAML configuration."""
+    _LOGGER.info("Setting up oil price sensor from YAML")
+    async_add_entities([OilPriceSensor(name=config[CONF_NAME], region=config[CONF_REGION])], True)
 
 class OilPriceSensor(Entity):
     def __init__(self, name: str, region: str):
@@ -42,23 +58,41 @@ class OilPriceSensor(Entity):
         self._region = region
         self._state = None
         self._entries = {}
+        self._available = True
 
     def update(self):
-        _LOGGER.info("sensor oilprice update info from http://www.qiyoujiage.com/")
-        header = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.79 Safari/537.36'
-        }
-        response = request('GET', 'http://www.qiyoujiage.com/' + self._region + '.shtml', headers=header)  # 定义头信息发送请求返回response对象
-        response.encoding = 'utf-8'   #不写这句会乱码
-        soup = BeautifulSoup(response.text, "lxml")
-        dls = soup.select("#youjia > dl")
-        self._state = soup.select("#youjiaCont > div")[1].contents[0].strip()
+        """Update sensor data."""
+        _LOGGER.info("Updating oil price info from http://www.qiyoujiage.com/")
+        try:
+            header = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.79 Safari/537.36'
+            }
+            response = request('GET', 'http://www.qiyoujiage.com/' + self._region + '.shtml', 
+                              headers=header, timeout=10)
+            response.raise_for_status()
+            response.encoding = 'utf-8'
+            
+            soup = BeautifulSoup(response.text, "lxml")
+            dls = soup.select("#youjia > dl")
+            self._state = soup.select("#youjiaCont > div")[1].contents[0].strip()
 
-        for dl in dls:
-            k = re.search("\d+", dl.select('dt')[0].text).group()
-            self._entries[k] = dl.select('dd')[0].text
-        self._entries["update_time"] = datetime.datetime.now().strftime('%Y-%m-%d')
-        self._entries["tips"] = soup.select("#youjiaCont > div:nth-of-type(2) > span")[0].text.strip()  # 油价涨跌信息
+            for dl in dls:
+                match = re.search(r"\d+", dl.select('dt')[0].text)
+                if match:
+                    k = match.group()
+                    self._entries[k] = dl.select('dd')[0].text
+            self._entries["update_time"] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self._entries["tips"] = soup.select("#youjiaCont > div:nth-of-type(2) > span")[0].text.strip()
+            self._entries["status"] = "online"
+            self._available = True
+            
+        except Exception as err:
+            _LOGGER.error("Error updating oil price data: %s", err)
+            self._state = "Unavailable"
+            self._entries["status"] = "offline"
+            self._entries["error"] = str(err)
+            self._entries["update_time"] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self._available = False
 
     @property
     def name(self):
@@ -73,5 +107,15 @@ class OilPriceSensor(Entity):
         return ICON
 
     @property
+    def available(self):
+        """Return if entity is available."""
+        return self._available
+
+    @property
     def extra_state_attributes(self):
         return self._entries
+
+    @property
+    def should_poll(self):
+        """Return True if the sensor should be polled."""
+        return True
